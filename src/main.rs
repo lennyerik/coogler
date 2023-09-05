@@ -31,7 +31,7 @@ impl Function {
         format!(
             "{} ( {} )",
             normalise_type(&self.return_type),
-            param_reprs.join(" ")
+            param_reprs.join(" , ")
         )
     }
 }
@@ -169,12 +169,18 @@ fn main() -> Result<(), String> {
         clang::EntityVisitResult::Continue
     });
 
-    for func in functions {
-        println!("{func}");
-        println!("{}", func.normalised_signature());
+    let mut distances: Vec<(usize, usize)> = Vec::with_capacity(functions.len());
+    for (i, func) in functions.iter().enumerate() {
+        distances.push((
+            levenshtein_distance(&func.normalised_signature(), &normalised_query),
+            i,
+        ));
     }
 
-    dbg!(normalised_query);
+    distances.sort_by_key(|d| d.0);
+    for (_, index) in distances.into_iter().take(20) {
+        println!("{}", functions[index]);
+    }
 
     Ok(())
 }
@@ -187,6 +193,36 @@ fn usage() -> ! {
             .unwrap_or_else(|| "./coogler".into())
     );
     std::process::exit(1)
+}
+
+fn levenshtein_distance(a: &str, b: &str) -> usize {
+    let n = a.len();
+    let m = b.len();
+    let mut dp = vec![0_usize; (n + 1) * (m + 1)];
+
+    for i in 0..=n {
+        dp[i * (m + 1)] = i;
+    }
+
+    // An iterator for loop makes the linter happy
+    for (j, d) in dp.iter_mut().enumerate().take(m + 1) {
+        *d = j;
+    }
+
+    for i in 1..=n {
+        for j in 1..=m {
+            dp[i * (m + 1) + j] = if a.chars().nth(i - 1) == b.chars().nth(j - 1) {
+                dp[(i - 1) * (m + 1) + (j - 1)]
+            } else {
+                dp[i * (m + 1) + (j - 1)]
+                    .min(dp[(i - 1) * (m + 1) + j])
+                    .min(dp[(i - 1) * (m + 1) + (j - 1)])
+                    + 1
+            }
+        }
+    }
+
+    *dp.last().unwrap_or(&a.len().max(b.len()))
 }
 
 fn clang_c_include_path_args() -> Result<Vec<String>, String> {
