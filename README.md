@@ -1,5 +1,5 @@
 # coogler
-[coogle](), but for all us plebs who do not have access to the Jai beta.
+[coogle](https://www.youtube.com/watch?v=_BrDLSLYGiQ), but for all us plebs who do not have access to the Jai beta.
 The name comes from **coogle** and **R**ust.
 
 It's basically a [Hoogle](https://hoogle.haskell.org/)-like search engine for C functions by signature.
