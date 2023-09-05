@@ -1,3 +1,4 @@
+use std::io::{stdout, BufWriter, Write};
 use std::path::{Path, PathBuf};
 
 #[derive(Debug)]
@@ -178,8 +179,10 @@ fn main() -> Result<(), String> {
     }
 
     distances.sort_by_key(|d| d.0);
+
+    let mut stdout = BufWriter::new(stdout().lock());
     for (_, index) in distances.into_iter().take(20) {
-        println!("{}", functions[index]);
+        let _ = stdout.write_fmt(format_args!("{}\n", functions[index]));
     }
 
     Ok(())
