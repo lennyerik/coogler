@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug)]
 struct Location {
@@ -15,6 +15,27 @@ struct Function {
     parameters: Vec<(String, Option<String>)>,
 }
 
+fn normalise_type(type_str: &str) -> String {
+    // TODO: This might not be the best way to add spaces between consecutive "*" characters...
+    type_str.replace("**", "* *").replace("**", "* *")
+}
+
+impl Function {
+    fn normalised_signature(&self) -> String {
+        let param_reprs: Vec<String> = self
+            .parameters
+            .iter()
+            .map(|(typ, _)| normalise_type(typ))
+            .collect();
+
+        format!(
+            "{} ( {} )",
+            normalise_type(&self.return_type),
+            param_reprs.join(" ")
+        )
+    }
+}
+
 impl std::fmt::Display for Function {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let param_reprs: Vec<String> = self
@@ -27,25 +48,58 @@ impl std::fmt::Display for Function {
             .collect();
 
         f.write_fmt(format_args!(
-            "{}:{}:{}: {} {}({})",
+            "{}:{}:{}: {} :: {}({})",
             self.location.file_name,
             self.location.line,
             self.location.column,
-            self.return_type,
             self.name,
+            self.return_type,
             param_reprs.join(", ")
         ))
     }
+}
+
+fn normalise_query(index: &clang::Index, query_string: &str) -> Result<String, String> {
+    let unsaved_path = Path::new("<query>");
+    let unsaved = clang::Unsaved::new(unsaved_path, query_string);
+
+    let parsed = index
+        .parser(unsaved_path)
+        .skip_function_bodies(true)
+        .single_file_parse(true)
+        .incomplete(true)
+        .arguments(&["-xc", "-E", "-w", "-ferror-limit=1"])
+        .unsaved(&[unsaved])
+        .parse()?;
+
+    let file = parsed
+        .get_file(unsaved_path)
+        .expect("libclang did not return the temporary (unsaved) user query file");
+    let file_range = {
+        let start = file.get_offset_location(0);
+        let end = file.get_offset_location(
+            // It is unlikely that someone is ever going to enter a string this large
+            u32::try_from(query_string.len()).expect("Query string is too long"),
+        );
+        clang::source::SourceRange::new(start, end)
+    };
+
+    let tokens = file_range.tokenize();
+    Ok(tokens
+        .iter()
+        .map(clang::token::Token::get_spelling)
+        .collect::<Vec<_>>()
+        .join(" "))
 }
 
 fn main() -> Result<(), String> {
     let mut args = std::env::args();
 
     let source_path = args.nth(1).unwrap_or_else(|| usage());
-    let _search_string = args.next().unwrap_or_else(|| usage());
+    let search_string = args.next().unwrap_or_else(|| usage());
 
     let clang = clang::Clang::new().expect("Failed to get libclang instance");
-    let index = clang::Index::new(&clang, false, true);
+    let index = clang::Index::new(&clang, false, false);
 
     let mut clang_args = clang_c_include_path_args().unwrap_or_else(|err| {
         eprintln!("Failed to get default C include paths: {err}");
@@ -53,18 +107,23 @@ fn main() -> Result<(), String> {
     });
     clang_args.push("-xc".into());
     let translation_unit = index
-        .parser(PathBuf::from(source_path))
+        .parser(PathBuf::from(&source_path))
         .arguments(&clang_args)
         .skip_function_bodies(true)
         .parse()?;
 
-    let parsing_failed = translation_unit
+    let error_occurred = translation_unit
         .get_diagnostics()
         .iter()
-        .any(|diagnostic| diagnostic.get_severity() >= clang::diagnostic::Severity::Error);
-    if parsing_failed {
+        .filter(|d| d.get_severity() >= clang::diagnostic::Severity::Error)
+        .inspect(|d| eprintln!("{}", d.get_text()))
+        .count()
+        > 0;
+    if error_occurred {
         return Err("Clang failed to parse the file provided".into());
     }
+
+    let normalised_query = normalise_query(&index, &search_string)?;
 
     let mut functions = Vec::new();
     translation_unit.get_entity().visit_children(|cur, _| {
@@ -112,7 +171,10 @@ fn main() -> Result<(), String> {
 
     for func in functions {
         println!("{func}");
+        println!("{}", func.normalised_signature());
     }
+
+    dbg!(normalised_query);
 
     Ok(())
 }
