@@ -60,7 +60,37 @@ impl std::fmt::Display for Function {
     }
 }
 
-fn normalise_query(index: &clang::Index, query_string: &str) -> Result<String, String> {
+struct Query {
+    name: Option<String>,
+    normalised_signature: Option<String>,
+}
+
+impl Query {
+    fn try_from_user_string<T: AsRef<str>>(
+        query_str: T,
+        index: &clang::Index,
+    ) -> Result<Self, String> {
+        let query_str = query_str.as_ref();
+
+        let query_parts = query_str.split_once("::");
+        if let Some((name_query, signature_query)) = query_parts {
+            Ok(Self {
+                name: match name_query.trim() {
+                    "" => None,
+                    name => Some(name.into()),
+                },
+                normalised_signature: normalise_signature(index, signature_query)?,
+            })
+        } else {
+            Ok(Self {
+                name: None,
+                normalised_signature: normalise_signature(index, query_str)?,
+            })
+        }
+    }
+}
+
+fn normalise_signature(index: &clang::Index, query_string: &str) -> Result<Option<String>, String> {
     let unsaved_path = Path::new("<query>");
     let unsaved = clang::Unsaved::new(unsaved_path, query_string);
 
@@ -86,21 +116,34 @@ fn normalise_query(index: &clang::Index, query_string: &str) -> Result<String, S
     };
 
     let tokens = file_range.tokenize();
-    Ok(tokens
+    let sig = tokens
         .iter()
         .map(clang::token::Token::get_spelling)
         .collect::<Vec<_>>()
-        .join(" "))
+        .join(" ");
+
+    Ok(match sig.as_str() {
+        "" => None,
+        _ => Some(sig),
+    })
 }
 
 fn main() -> Result<(), String> {
     let mut args = std::env::args();
 
-    let source_path = args.nth(1).unwrap_or_else(|| usage());
+    let source_path_str = args.nth(1).unwrap_or_else(|| usage());
     let search_string = args.next().unwrap_or_else(|| usage());
 
     let clang = clang::Clang::new().expect("Failed to get libclang instance");
     let index = clang::Index::new(&clang, false, false);
+
+    // Check that the file exists
+    let source_path = PathBuf::from(&source_path_str);
+    if !source_path.exists() {
+        return Err(format!(
+            "The source file `{source_path_str}` does not exist."
+        ));
+    }
 
     let mut clang_args = clang_c_include_path_args().unwrap_or_else(|err| {
         eprintln!("Failed to get default C include paths: {err}");
@@ -108,10 +151,11 @@ fn main() -> Result<(), String> {
     });
     clang_args.push("-xc".into());
     let translation_unit = index
-        .parser(PathBuf::from(&source_path))
+        .parser(source_path)
         .arguments(&clang_args)
         .skip_function_bodies(true)
-        .parse()?;
+        .parse()
+        .map_err(|err_msg| format!("libclang failed to parse `{source_path_str}`: {err_msg}"))?;
 
     let error_occurred = translation_unit
         .get_diagnostics()
@@ -124,7 +168,7 @@ fn main() -> Result<(), String> {
         return Err("Clang failed to parse the file provided".into());
     }
 
-    let normalised_query = normalise_query(&index, &search_string)?;
+    let query = Query::try_from_user_string(&search_string, &index)?;
 
     let mut functions = Vec::new();
     translation_unit.get_entity().visit_children(|cur, _| {
@@ -172,10 +216,15 @@ fn main() -> Result<(), String> {
 
     let mut distances: Vec<(usize, usize)> = Vec::with_capacity(functions.len());
     for (i, func) in functions.iter().enumerate() {
-        distances.push((
-            levenshtein_distance(&func.normalised_signature(), &normalised_query),
-            i,
-        ));
+        let mut d = 0;
+        if let Some(name) = &query.name {
+            d += levenshtein_distance(&func.name, name);
+        }
+        if let Some(signature) = &query.normalised_signature {
+            d += levenshtein_distance(&func.normalised_signature(), signature);
+        }
+
+        distances.push((d, i));
     }
 
     distances.sort_by_key(|d| d.0);
