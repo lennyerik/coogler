@@ -17,9 +17,9 @@ Or:
 Where the search query may be of the form `[<function name> ::] <function signature>`
 
 ## Examples
+### Example output
 You can, for example, search the libc headers for a function returning an `int` and taking no parameters in the following way:
 
-### Example output
     $ coogler /usr/include/stdlib.h 'int()'
 
     /usr/include/stdlib.h:573:12: rand :: int()
@@ -43,27 +43,27 @@ You can, for example, search the libc headers for a function returning an `int` 
     /usr/include/stdlib.h:687:13: free :: void(void * __ptr)
     /usr/include/stdlib.h:672:14: malloc :: void *(size_t __size)
 
-Like coogle, this tool works great for searching the [Raylib](https://github.com/raysan5/raylib) header:
+Like coogle, this tool works great for searching the [Raylib](https://github.com/raysan5/raylib) headers:
 
     $ coogler raylib/include/raylib.h 'contrast :: Color(Color, float)'
 
-    include/raylib.h:1339:13: ColorContrast :: Color(Color color, float contrast)
-    include/raylib.h:1331:13: Fade :: Color(Color color, float alpha)
-    include/raylib.h:1340:13: ColorAlpha :: Color(Color color, float alpha)
-    include/raylib.h:1337:13: ColorTint :: Color(Color color, Color tint)
-    include/raylib.h:1338:13: ColorBrightness :: Color(Color color, float factor)
-    include/raylib.h:1433:12: DrawGrid :: void(int slices, float spacing)
-    include/raylib.h:1536:12: SetSoundPan :: void(Sound sound, float pan)
-    include/raylib.h:1133:12: SetMouseScale :: void(float scaleX, float scaleY)
-    include/raylib.h:1535:12: SetSoundPitch :: void(Sound sound, float pitch)
-    include/raylib.h:1557:12: SetMusicPan :: void(Music music, float pan)
-    include/raylib.h:1332:11: ColorToInt :: int(Color color)
-    include/raylib.h:1336:13: ColorFromHSV :: Color(float hue, float saturation, float value)
-    include/raylib.h:1342:13: GetColor :: Color(unsigned int hexValue)
-    include/raylib.h:1432:12: DrawRay :: void(Ray ray, Color color)
-    include/raylib.h:1467:12: GenMeshPoly :: Mesh(int sides, float radius)
-    include/raylib.h:1534:12: SetSoundVolume :: void(Sound sound, float volume)
-    include/raylib.h:1556:12: SetMusicPitch :: void(Music music, float pitch)
-    include/raylib.h:1335:15: ColorToHSV :: Vector3(Color color)
-    include/raylib.h:1353:12: LoadFont :: Font(const char * fileName)
-    include/raylib.h:1357:12: IsFontReady :: _Bool(Font font)
+    raylib/include/raylib.h:1339:13: ColorContrast :: Color(Color color, float contrast)
+    raylib/include/raylib.h:1340:13: ColorAlpha :: Color(Color color, float alpha)
+    raylib/include/raylib.h:1331:13: Fade :: Color(Color color, float alpha)
+    raylib/include/raylib.h:1337:13: ColorTint :: Color(Color color, Color tint)
+    raylib/include/raylib.h:1338:13: ColorBrightness :: Color(Color color, float factor)
+    raylib/include/raylib.h:1433:12: DrawGrid :: void(int slices, float spacing)
+    raylib/include/raylib.h:1536:12: SetSoundPan :: void(Sound sound, float pan)
+    raylib/include/raylib.h:1336:13: ColorFromHSV :: Color(float hue, float saturation, float value)
+    raylib/include/raylib.h:1133:12: SetMouseScale :: void(float scaleX, float scaleY)
+    raylib/include/raylib.h:1332:11: ColorToInt :: int(Color color)
+    raylib/include/raylib.h:1335:15: ColorToHSV :: Vector3(Color color)
+    raylib/include/raylib.h:1357:12: IsFontReady :: _Bool(Font font)
+    raylib/include/raylib.h:1432:12: DrawRay :: void(Ray ray, Color color)
+    raylib/include/raylib.h:1535:12: SetSoundPitch :: void(Sound sound, float pitch)
+    raylib/include/raylib.h:1557:12: SetMusicPan :: void(Music music, float pan)
+    raylib/include/raylib.h:1342:13: GetColor :: Color(unsigned int hexValue)
+    raylib/include/raylib.h:1353:12: LoadFont :: Font(const char * fileName)
+    raylib/include/raylib.h:1365:12: DrawFPS :: void(int posX, int posY)
+    raylib/include/raylib.h:1467:12: GenMeshPoly :: Mesh(int sides, float radius)
+    raylib/include/raylib.h:1534:12: SetSoundVolume :: void(Sound sound, float volume)

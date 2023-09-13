@@ -263,7 +263,15 @@ fn levenshtein_distance(a: &str, b: &str) -> usize {
 
     for i in 1..=n {
         for j in 1..=m {
-            dp[i * (m + 1) + j] = if a.chars().nth(i - 1) == b.chars().nth(j - 1) {
+            let char_a = a
+                .chars()
+                .nth(i - 1)
+                .expect("Character index out of bounds in levenshtein_distance");
+            let char_b = b
+                .chars()
+                .nth(j - 1)
+                .expect("Character index out of bounds in levenshtein_distance");
+            dp[i * (m + 1) + j] = if char_a.eq_ignore_ascii_case(&char_b) {
                 dp[(i - 1) * (m + 1) + (j - 1)]
             } else {
                 dp[i * (m + 1) + (j - 1)]
