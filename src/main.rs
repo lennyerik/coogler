@@ -168,7 +168,7 @@ fn main() -> Result<(), String> {
         return Err("Clang failed to parse the file provided".into());
     }
 
-    let query = Query::try_from_user_string(&search_string, &index)?;
+    let query = Query::try_from_user_string(search_string, &index)?;
 
     let mut functions = Vec::new();
     translation_unit.get_entity().visit_children(|cur, _| {
